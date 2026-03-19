@@ -144,7 +144,7 @@
 <div id="main-frame">
     <div class="panel header">
         <span>SECURITY: <span style="color: var(--matrix-green)">ACTIVE</span></span>
-        <span onclick="toggleLogs()" style="cursor:pointer; padding: 8px 15px; border: 1px solid var(--neon-blue); font-size: 0.8rem; background: rgba(0, 242, 255, 0.1);">📂 MISSION_LOGS.EXE</span>
+        <span onclick="toggleLogs(event)" style="cursor:pointer; padding: 8px 15px; border: 1px solid var(--neon-blue); font-size: 0.8rem; background: rgba(0, 242, 255, 0.1);">📂 MISSION_LOGS.EXE</span>
         <span id="clock">00:00:00</span>
     </div>
 
@@ -208,14 +208,16 @@
     const snippets = ["CRACKING RSA_4096...", "REMOTE UPLOAD START...", "NODE BYPASS: ACTIVE", "FIREWALL SHIELD: ON", "FETCHING COORDINATES...", "SQL INJECTION: PASS", "VPN TUNNEL: STABLE", "ACCESSING CORE DATA...", "INJECTING EXPLOIT..."];
 
     function playBeep(freq, type, dur, vol) {
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        g.gain.setValueAtTime(vol, audioCtx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + dur);
-        osc.connect(g); g.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + dur);
+        try {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            g.gain.setValueAtTime(vol, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + dur);
+            osc.connect(g); g.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + dur);
+        } catch(e) {}
     }
 
     function updateMissionData() {
@@ -241,7 +243,8 @@
             </div>`).join('') : "NO MISSION DATA FOUND.";
     }
 
-    function toggleLogs() {
+    function toggleLogs(e) {
+        if(e) e.stopPropagation();
         if (logModal.style.display === 'flex') {
             logModal.style.display = 'none';
         } else {
@@ -255,7 +258,7 @@
         if(confirm("PERMANENTLY DELETE ALL SYSTEM LOGS?")) {
             localStorage.removeItem('missionLogs');
             currentMissionKeys = 0;
-            missionID = Date.now(); // Reset session so current actions start fresh
+            missionID = Date.now();
             renderLogList();
             playBeep(100, 'sawtooth', 0.5, 0.1);
         }
@@ -263,7 +266,10 @@
 
     function requestFullscreen() {
         if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(() => {});
+            const docElm = document.documentElement;
+            if (docElm.requestFullscreen) docElm.requestFullscreen();
+            else if (docElm.webkitRequestFullscreen) docElm.webkitRequestFullscreen();
+            else if (docElm.msRequestFullscreen) docElm.msRequestFullscreen();
         }
     }
 
@@ -300,6 +306,7 @@
 
     function performAction() {
         if(launchMode || logModal.style.display === 'flex') return;
+        
         requestFullscreen();
         resetIdleTimer();
         currentMissionKeys++;
@@ -326,6 +333,7 @@
         alertOverlay.style.display = 'flex';
         let count = 5;
         const intr = setInterval(() => {
+            if(!launchMode) { clearInterval(intr); return; }
             playBeep(1000, 'square', 0.2, 0.1);
             alertOverlay.innerHTML = `MISSION OVERLOAD<br>AUTO-REBOOT IN ${count}`;
             count--;
@@ -354,13 +362,14 @@
 
     const interactionEvent = ('ontouchstart' in window) ? 'touchstart' : 'mousedown';
     document.addEventListener(interactionEvent, (e) => {
-        if(e.target.closest('#scanner-btn') || e.target.closest('#log-modal') || e.target.closest('.header')) return;
-        performAction();
-    });
-
-    document.getElementById('scanner-btn').addEventListener(interactionEvent, (e) => {
-        e.stopPropagation();
-        triggerLaunch();
+        // Only trigger action if we didn't hit a specific UI button
+        if(e.target.closest('.modal-btn') || e.target.closest('.header span') || e.target.closest('#log-modal')) return;
+        
+        if(e.target.closest('#scanner-btn')) {
+            triggerLaunch();
+        } else {
+            performAction();
+        }
     });
 
     setInterval(() => {
