@@ -68,13 +68,31 @@
 
         .line { margin-bottom: 6px; text-shadow: 0 0 8px var(--neon-blue); }
         .line.cmd { color: var(--matrix-green); text-shadow: 0 0 8px var(--matrix-green); }
-        .line.warn { color: var(--neon-red); font-weight: bold; animation: blink 0.4s infinite; }
 
         #left-sidebar, #right-sidebar { grid-row: 2; display: flex; flex-direction: column; gap: 12px; }
         .stat-card { padding: 15px; flex: 1; }
 
         .progress-container { width: 100%; height: 18px; border: 1px solid var(--neon-blue); position: relative; margin-top: 5px;}
         .progress-fill { width: 0%; height: 100%; background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); transition: width 0.4s; }
+
+        /* MODAL LOGS */
+        #log-modal {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 80%; height: 70%; background: #050505; border: 2px solid var(--neon-blue);
+            z-index: 2000; display: none; flex-direction: column; padding: 20px;
+            box-shadow: 0 0 50px rgba(0, 242, 255, 0.4);
+        }
+
+        .log-content { flex: 1; overflow-y: auto; font-family: monospace; color: var(--matrix-green); padding: 10px; border: 1px dashed #333; line-height: 1.6; }
+
+        .modal-btn {
+            background: transparent; color: white; border: 1px solid white; 
+            padding: 10px 20px; cursor: pointer; font-family: inherit; font-weight: bold;
+            transition: all 0.2s;
+        }
+        .modal-btn:hover { background: rgba(255,255,255,0.1); }
+        .purge-btn { border-color: var(--neon-red); color: var(--neon-red); margin-right: 10px; }
+        .purge-btn:hover { background: rgba(255, 0, 60, 0.2); }
 
         #standby-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -84,7 +102,7 @@
             color: var(--neon-blue); text-align: center;
         }
 
-        .coffee-icon { font-size: 8rem; filter: drop-shadow(0 0 20px var(--neon-blue)); margin-bottom: 20px; animation: float 3s infinite ease-in-out; }
+        .coffee-icon { font-size: 8rem; margin-bottom: 20px; animation: float 3s infinite ease-in-out; }
 
         @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
         @keyframes scan { 0%, 100% { top: 20%; } 50% { top: 80%; } }
@@ -104,6 +122,17 @@
 
 <div class="overlay"></div>
 
+<div id="log-modal">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="margin: 0; letter-spacing: 2px;">📜 AGENT ACTIVITY LOGS</h2>
+        <div>
+            <button class="modal-btn purge-btn" onclick="purgeLogs()">PURGE HISTORY</button>
+            <button class="modal-btn" onclick="toggleLogs()">CLOSE</button>
+        </div>
+    </div>
+    <div id="log-list" class="log-content"></div>
+</div>
+
 <div id="standby-overlay">
     <div class="coffee-icon">☕</div>
     <h1 style="letter-spacing: 10px;">SYSTEM ON STANDBY</h1>
@@ -114,8 +143,8 @@
 
 <div id="main-frame">
     <div class="panel header">
-        <span>SECURITY: <span id="status-text" style="color: var(--matrix-green)">ACTIVE</span></span>
-        <span>AGENT: GAIVOTA</span>
+        <span>SECURITY: <span style="color: var(--matrix-green)">ACTIVE</span></span>
+        <span onclick="toggleLogs()" style="cursor:pointer; padding: 8px 15px; border: 1px solid var(--neon-blue); font-size: 0.8rem; background: rgba(0, 242, 255, 0.1);">📂 MISSION_LOGS.EXE</span>
         <span id="clock">00:00:00</span>
     </div>
 
@@ -165,12 +194,16 @@
     const alertOverlay = document.getElementById('alert-overlay');
     const standbyOverlay = document.getElementById('standby-overlay');
     const mainFrame = document.getElementById('main-frame');
+    const logModal = document.getElementById('log-modal');
+    const logList = document.getElementById('log-list');
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
     let idleTimer;
     let isStandby = false;
     let taskProgress = 0;
     let launchMode = false;
+    let currentMissionKeys = 0;
+    let missionID = Date.now();
 
     const snippets = ["CRACKING RSA_4096...", "REMOTE UPLOAD START...", "NODE BYPASS: ACTIVE", "FIREWALL SHIELD: ON", "FETCHING COORDINATES...", "SQL INJECTION: PASS", "VPN TUNNEL: STABLE", "ACCESSING CORE DATA...", "INJECTING EXPLOIT..."];
 
@@ -185,11 +218,52 @@
         osc.start(); osc.stop(audioCtx.currentTime + dur);
     }
 
+    function updateMissionData() {
+        if (currentMissionKeys === 0) return;
+        let logs = JSON.parse(localStorage.getItem('missionLogs') || "[]");
+        let currentIdx = logs.findIndex(l => l.id === missionID);
+        const timestamp = new Date().toLocaleString();
+        
+        if (currentIdx > -1) {
+            logs[currentIdx].actions = currentMissionKeys;
+        } else {
+            logs.unshift({ id: missionID, start: timestamp, actions: currentMissionKeys });
+        }
+        localStorage.setItem('missionLogs', JSON.stringify(logs.slice(0, 30)));
+    }
+
+    function renderLogList() {
+        const logs = JSON.parse(localStorage.getItem('missionLogs') || "[]");
+        logList.innerHTML = logs.length ? 
+            logs.map(l => `<div style="margin-bottom:8px; border-bottom:1px solid #222; padding-bottom:4px;">
+                <span style="color:var(--neon-blue)">[${l.start}]</span><br>
+                >> STATUS: SUCCESS | ACTIONS: ${l.actions}
+            </div>`).join('') : "NO MISSION DATA FOUND.";
+    }
+
+    function toggleLogs() {
+        if (logModal.style.display === 'flex') {
+            logModal.style.display = 'none';
+        } else {
+            updateMissionData();
+            renderLogList();
+            logModal.style.display = 'flex';
+        }
+    }
+
+    function purgeLogs() {
+        if(confirm("PERMANENTLY DELETE ALL SYSTEM LOGS?")) {
+            localStorage.removeItem('missionLogs');
+            currentMissionKeys = 0;
+            missionID = Date.now(); // Reset session so current actions start fresh
+            renderLogList();
+            playBeep(100, 'sawtooth', 0.5, 0.1);
+        }
+    }
+
     function requestFullscreen() {
         if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {
-                console.log(`Error attempting to enable full-screen mode: ${err.message}`);
-            });
+            document.documentElement.requestFullscreen().catch(() => {});
         }
     }
 
@@ -209,6 +283,7 @@
     function goStandby() {
         if(launchMode) return;
         isStandby = true;
+        updateMissionData(); 
         standbyOverlay.style.display = 'flex';
         mainFrame.style.filter = 'blur(10px)';
         mainFrame.style.opacity = '0.3';
@@ -224,12 +299,13 @@
     }
 
     function performAction() {
-        if(launchMode) return;
-        
-        // Fullscreen and Audio Context trigger
+        if(launchMode || logModal.style.display === 'flex') return;
         requestFullscreen();
         resetIdleTimer();
+        currentMissionKeys++;
         
+        if (currentMissionKeys % 10 === 0) updateMissionData();
+
         playBeep(700 + Math.random()*300, 'sine', 0.05, 0.05);
         playBeep(120, 'square', 0.1, 0.03);
 
@@ -245,7 +321,7 @@
 
     function triggerLaunch() {
         if(launchMode) return;
-        requestFullscreen(); // Ensure FS if they click scanner first
+        requestFullscreen();
         launchMode = true;
         alertOverlay.style.display = 'flex';
         let count = 5;
@@ -256,6 +332,7 @@
             if(count < 0) {
                 clearInterval(intr);
                 alertOverlay.innerHTML = "REBOOT COMPLETE";
+                updateMissionData();
                 setTimeout(() => { 
                     alertOverlay.style.display='none'; 
                     launchMode=false; 
@@ -265,25 +342,19 @@
         }, 1000);
     }
 
-    // Listeners
     document.addEventListener('keydown', (e) => {
         if(e.repeat) return;
-        if(e.key.toLowerCase() === 'l') {
-            triggerLaunch();
-        } else if(e.key === 'Backspace') {
+        if(e.key.toLowerCase() === 'l') triggerLaunch();
+        else if(e.key === 'Backspace') {
             document.body.style.animation = "shake 0.2s infinite";
             playBeep(50, 'sawtooth', 0.4, 0.2);
-            addTerminalLine("!! ERROR: ACCESS DENIED !!", false);
             setTimeout(() => document.body.style.animation = "none", 200);
-        } else {
-            performAction();
-        }
+        } else performAction();
     });
 
-    // Handle clicks AND touches globally
     const interactionEvent = ('ontouchstart' in window) ? 'touchstart' : 'mousedown';
     document.addEventListener(interactionEvent, (e) => {
-        if(e.target.closest('#scanner-btn')) return;
+        if(e.target.closest('#scanner-btn') || e.target.closest('#log-modal') || e.target.closest('.header')) return;
         performAction();
     });
 
@@ -299,6 +370,7 @@
         document.getElementById('coords').innerHTML = `LAT: ${Math.random().toFixed(3)}<br>LON: ${Math.random().toFixed(3)}`;
     }, 2000);
 
+    window.addEventListener('beforeunload', updateMissionData);
     idleTimer = setTimeout(goStandby, 30000);
 </script>
 </body>
