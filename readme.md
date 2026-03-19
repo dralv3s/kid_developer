@@ -3,7 +3,7 @@
 A high-immersion, Hollywood-style "Hacker Terminal" designed specifically for toddlers who insist on "helping" their parents work. It provides constant visual and auditory feedback for every keypress, keeping little hands busy and away from your actual source code.
 
 ## 🚀 Live Demo
-**[Insert Your GitHub Pages URL Here]**
+**[kid-developer](https://dralv3s.github.io/kid_developer/)**
 
 ---
 
