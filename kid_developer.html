@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CLASSIFIED SYSTEM - LEVEL 5</title>
+    <style>
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-red: #ff003c;
+            --matrix-green: #00ff41;
+            --bg: #020202;
+            --panel-bg: rgba(0, 20, 30, 0.6);
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            background: var(--bg);
+            color: var(--neon-blue);
+            font-family: 'Segoe UI', 'Courier New', monospace;
+            height: 100vh; overflow: hidden;
+            user-select: none;
+            text-transform: uppercase;
+        }
+
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%),
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.04));
+            background-size: 100% 3px, 3px 100%;
+            z-index: 100; pointer-events: none;
+            opacity: 0.8;
+        }
+
+        #main-frame {
+            display: grid;
+            grid-template-columns: 320px 1fr 320px;
+            grid-template-rows: 70px 1fr 100px;
+            height: 100vh;
+            gap: 12px; padding: 12px;
+            box-sizing: border-box;
+            transition: filter 0.5s, opacity 0.5s;
+        }
+
+        .panel {
+            border: 1px solid rgba(0, 242, 255, 0.4);
+            background: var(--panel-bg);
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0, 242, 255, 0.05);
+        }
+
+        .header {
+            grid-column: 1 / 4;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 25px; font-weight: bold; letter-spacing: 3px;
+            border-bottom: 2px solid var(--neon-blue);
+        }
+
+        #terminal {
+            grid-column: 2; grid-row: 2;
+            padding: 25px; display: flex; flex-direction: column;
+            justify-content: flex-end; font-family: 'Consolas', monospace;
+            font-size: 1.2rem;
+            background: rgba(0, 10, 15, 0.8);
+        }
+
+        .line { margin-bottom: 6px; text-shadow: 0 0 8px var(--neon-blue); }
+        .line.cmd { color: var(--matrix-green); text-shadow: 0 0 8px var(--matrix-green); }
+        .line.warn { color: var(--neon-red); font-weight: bold; animation: blink 0.4s infinite; }
+
+        #left-sidebar, #right-sidebar { grid-row: 2; display: flex; flex-direction: column; gap: 12px; }
+        .stat-card { padding: 15px; flex: 1; }
+
+        .progress-container { width: 100%; height: 18px; border: 1px solid var(--neon-blue); position: relative; margin-top: 5px;}
+        .progress-fill { width: 0%; height: 100%; background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); transition: width 0.4s; }
+
+        /* Coffee Standby Overlay */
+        #standby-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 500; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
+            color: var(--neon-blue); text-align: center;
+        }
+
+        .coffee-icon { font-size: 8rem; filter: drop-shadow(0 0 20px var(--neon-blue)); margin-bottom: 20px; animation: float 3s infinite ease-in-out; }
+
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        @keyframes scan { 0%, 100% { top: 20%; } 50% { top: 80%; } }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        #alert-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 0, 60, 0.9); display: none;
+            z-index: 1000; align-items: center; justify-content: center;
+            color: white; font-size: 6vw; font-weight: 900; text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="overlay"></div>
+
+<div id="standby-overlay">
+    <div class="coffee-icon">☕</div>
+    <h1 style="letter-spacing: 10px;">SYSTEM ON STANDBY</h1>
+    <p style="font-size: 1.5rem; animation: blink 1s infinite;">PRESS ANY KEY TO RESUME WORK</p>
+</div>
+
+<div id="alert-overlay">CORE MELTDOWN IMMINENT</div>
+
+<div id="main-frame">
+    <div class="panel header">
+        <span>SECURITY: <span id="status-text" style="color: var(--matrix-green)">ACTIVE</span></span>
+        <span>AGENT: GAIVOTA</span>
+        <span id="clock">00:00:00</span>
+    </div>
+
+    <div id="left-sidebar">
+        <div class="panel" style="flex: 2; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <div style="font-size: 0.8rem; margin-bottom: 15px;">BIO-SCANNER</div>
+            <div style="width: 150px; height: 150px; border: 3px solid var(--neon-blue); border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center;">
+                <div style="position: absolute; width: 110%; height: 3px; background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); animation: scan 2s infinite ease-in-out;"></div>
+                <span style="font-size: 3rem;">🖐️</span>
+            </div>
+            <div style="margin-top: 15px; color: var(--matrix-green); font-size: 0.8rem;">IDENTITY VERIFIED</div>
+        </div>
+        <div class="panel stat-card">
+            <div style="font-size: 0.7rem;">SATELLITE POSITION</div>
+            <div id="coords" style="font-size: 0.8rem; margin-top: 10px;">LAT: --.---<br>LON: --.---</div>
+        </div>
+    </div>
+
+    <div class="panel" id="terminal">
+        <div class="line">>> SYSTEM V6.5 SECURE BOOT SUCCESSFUL...</div>
+        <div class="line">>> STANDBY FOR REMOTE UPLINK...</div>
+    </div>
+
+    <div id="right-sidebar">
+        <div class="panel stat-card">
+            <div style="font-size: 0.7rem;">CPU LOAD</div>
+            <div class="progress-container"><div id="cpu-bar" class="progress-fill"></div></div>
+            <div style="font-size: 0.7rem; margin-top: 15px;">MEMORY</div>
+            <div class="progress-container"><div id="mem-bar" class="progress-fill" style="background: var(--matrix-green)"></div></div>
+        </div>
+        <div class="panel stat-card">
+            <div style="font-size: 0.7rem;">MISSION PROGRESS</div>
+            <div id="task-percent" style="font-size: 2.5rem; margin-top: 10px;">0%</div>
+            <div id="task-label" style="font-size: 0.6rem; color: #666;">DECRYPTING FILES...</div>
+        </div>
+    </div>
+
+    <div class="panel" style="grid-column: 1/4; display: flex; align-items: center; justify-content: space-around; padding: 0 30px;">
+        <div>DATA: <span id="data-val" style="color:white">0 KB/S</span></div>
+        <div class="progress-container" style="width: 50%"><div id="main-progress" class="progress-fill"></div></div>
+        <div id="node">NODE: URUGUAY_RELAY_04</div>
+    </div>
+</div>
+
+<script>
+    const terminal = document.getElementById('terminal');
+    const alertOverlay = document.getElementById('alert-overlay');
+    const standbyOverlay = document.getElementById('standby-overlay');
+    const mainFrame = document.getElementById('main-frame');
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    let idleTimer;
+    let isStandby = false;
+    let taskProgress = 0;
+    let launchMode = false;
+
+    function playBeep(freq, type, dur, vol) {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        g.gain.setValueAtTime(vol, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + dur);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + dur);
+    }
+
+    const snippets = ["CRACKING RSA_4096...", "REMOTE UPLOAD START...", "NODE BYPASS: ACTIVE", "FIREWALL SHIELD: ON", "FETCHING COORDINATES...", "SQL INJECTION: PASS", "VPN TUNNEL: STABLE"];
+
+    function resetIdleTimer() {
+        if(isStandby) {
+            isStandby = false;
+            standbyOverlay.style.display = 'none';
+            mainFrame.style.filter = 'none';
+            mainFrame.style.opacity = '1';
+            playBeep(600, 'sine', 0.5, 0.1);
+            const l = document.createElement('div');
+            l.className = 'line cmd';
+            l.innerHTML = ">> RE-AUTHORIZATION GRANTED. RESUMING WORK...";
+            terminal.appendChild(l);
+        }
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(goStandby, 30000); // 30 Seconds
+    }
+
+    function goStandby() {
+        if(launchMode) return;
+        isStandby = true;
+        standbyOverlay.style.display = 'flex';
+        mainFrame.style.filter = 'blur(10px)';
+        mainFrame.style.opacity = '0.3';
+        playBeep(200, 'sine', 1, 0.05);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if(e.repeat) return;
+        resetIdleTimer();
+        
+        playBeep(700 + Math.random()*300, 'sine', 0.05, 0.05);
+        playBeep(120, 'square', 0.1, 0.03);
+
+        const l = document.createElement('div');
+        l.className = 'line cmd';
+        l.innerHTML = `>> ${snippets[Math.floor(Math.random()*snippets.length)]} [${Math.random().toString(16).slice(2,5)}]`;
+        terminal.appendChild(l);
+        if(terminal.childNodes.length > 18) terminal.removeChild(terminal.firstChild);
+
+        taskProgress = (taskProgress + 1) % 101;
+        document.getElementById('task-percent').textContent = taskProgress + "%";
+        document.getElementById('main-progress').style.width = Math.random()*100 + "%";
+        document.getElementById('data-val').textContent = Math.floor(Math.random()*900) + " KB/S";
+
+        if(e.key.toLowerCase() === 'l' && !launchMode) { launchMode = true; triggerLaunch(); }
+        
+        if(e.key === 'Backspace') {
+            document.body.style.animation = "shake 0.2s infinite";
+            playBeep(50, 'sawtooth', 0.4, 0.2);
+            setTimeout(() => document.body.style.animation = "none", 200);
+        }
+    });
+
+    function triggerLaunch() {
+        alertOverlay.style.display = 'flex';
+        let count = 5;
+        const intr = setInterval(() => {
+            playBeep(1000, 'square', 0.2, 0.1);
+            alertOverlay.innerHTML = `MISSION OVERLOAD<br>AUTO-REBOOT IN ${count}`;
+            count--;
+            if(count < 0) {
+                clearInterval(intr);
+                alertOverlay.innerHTML = "REBOOT COMPLETE";
+                setTimeout(() => { alertOverlay.style.display='none'; launchMode=false; }, 2000);
+            }
+        }, 1000);
+    }
+
+    setInterval(() => {
+        document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+        document.getElementById('cpu-bar').style.width = Math.random()*100 + "%";
+        document.getElementById('mem-bar').style.width = Math.random()*100 + "%";
+        document.getElementById('coords').innerHTML = `LAT: ${Math.random().toFixed(3)}<br>LON: ${Math.random().toFixed(3)}`;
+    }, 2000);
+
+    document.addEventListener('click', () => {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        resetIdleTimer();
+    });
+
+    idleTimer = setTimeout(goStandby, 30000);
+</script>
+
+<style>
+    @keyframes shake { 0% { transform: translate(0,0); } 25% { transform: translate(5px, 5px); } 50% { transform: translate(-5px, -5px); } 75% { transform: translate(5px, -5px); } 100% { transform: translate(0,0); } }
+</style>
+</body>
+</html>
