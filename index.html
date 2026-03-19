@@ -18,7 +18,8 @@
             background: var(--bg);
             color: var(--neon-blue);
             font-family: 'Segoe UI', 'Courier New', monospace;
-            height: 100vh; overflow: hidden;
+            height: 100vh; width: 100vw;
+            overflow: hidden;
             user-select: none;
             text-transform: uppercase;
             touch-action: manipulation;
@@ -75,7 +76,6 @@
         .progress-container { width: 100%; height: 18px; border: 1px solid var(--neon-blue); position: relative; margin-top: 5px;}
         .progress-fill { width: 0%; height: 100%; background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); transition: width 0.4s; }
 
-        /* MODAL LOGS */
         #log-modal {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 80%; height: 70%; background: #050505; border: 2px solid var(--neon-blue);
@@ -105,20 +105,25 @@
         .coffee-icon { font-size: 8rem; margin-bottom: 20px; animation: float 3s infinite ease-in-out; }
 
         @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
-        @keyframes scan { 0%, 100% { top: 20%; } 50% { top: 80%; } }
+        @keyframes scan { 0%, 100% { top: 10%; } 50% { top: 90%; } }
         @keyframes blink { 50% { opacity: 0; } }
+        @keyframes shake { 0% { transform: translate(0,0); } 25% { transform: translate(8px, 8px); } 50% { transform: translate(-8px, -8px); } 75% { transform: translate(8px, -8px); } 100% { transform: translate(0,0); } }
 
         #alert-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 0, 60, 0.9); display: none;
-            z-index: 1000; align-items: center; justify-content: center;
+            background: rgba(255, 0, 60, 0.95); display: none;
+            z-index: 3000; align-items: center; justify-content: center;
             color: white; font-size: 6vw; font-weight: 900; text-align: center;
         }
 
-        @keyframes shake { 0% { transform: translate(0,0); } 25% { transform: translate(5px, 5px); } 50% { transform: translate(-5px, -5px); } 75% { transform: translate(5px, -5px); } 100% { transform: translate(0,0); } }
+        .scanning-line {
+            position: absolute; width: 110%; height: 4px; background: var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue); animation: scan 2s infinite ease-in-out;
+            left: -5%;
+        }
     </style>
 </head>
-<body>
+<body id="app-body">
 
 <div class="overlay"></div>
 
@@ -127,7 +132,7 @@
         <h2 style="margin: 0; letter-spacing: 2px;">📜 AGENT ACTIVITY LOGS</h2>
         <div>
             <button class="modal-btn purge-btn" onclick="purgeLogs()">PURGE HISTORY</button>
-            <button class="modal-btn" onclick="toggleLogs()">CLOSE</button>
+            <button class="modal-btn" onclick="toggleLogs(event)">CLOSE</button>
         </div>
     </div>
     <div id="log-list" class="log-content"></div>
@@ -152,7 +157,7 @@
         <div class="panel" id="scanner-btn" style="flex: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;">
             <div style="font-size: 0.8rem; margin-bottom: 15px;">BIO-SCANNER</div>
             <div style="width: 150px; height: 150px; border: 3px solid var(--neon-blue); border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center; pointer-events: none;">
-                <div style="position: absolute; width: 110%; height: 3px; background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); animation: scan 2s infinite ease-in-out;"></div>
+                <div class="scanning-line"></div>
                 <span style="font-size: 3rem;">🖐️</span>
             </div>
             <div style="margin-top: 15px; color: var(--matrix-green); font-size: 0.8rem;">TAP TO AUTHORIZE</div>
@@ -196,6 +201,7 @@
     const mainFrame = document.getElementById('main-frame');
     const logModal = document.getElementById('log-modal');
     const logList = document.getElementById('log-list');
+    const appBody = document.getElementById('app-body');
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
     let idleTimer;
@@ -265,11 +271,11 @@
     }
 
     function requestFullscreen() {
+        const de = document.documentElement;
         if (!document.fullscreenElement) {
-            const docElm = document.documentElement;
-            if (docElm.requestFullscreen) docElm.requestFullscreen();
-            else if (docElm.webkitRequestFullscreen) docElm.webkitRequestFullscreen();
-            else if (docElm.msRequestFullscreen) docElm.msRequestFullscreen();
+            if (de.requestFullscreen) de.requestFullscreen();
+            else if (de.webkitRequestFullscreen) de.webkitRequestFullscreen();
+            else if (de.msRequestFullscreen) de.msRequestFullscreen();
         }
     }
 
@@ -307,7 +313,6 @@
     function performAction() {
         if(launchMode || logModal.style.display === 'flex') return;
         
-        requestFullscreen();
         resetIdleTimer();
         currentMissionKeys++;
         
@@ -328,12 +333,10 @@
 
     function triggerLaunch() {
         if(launchMode) return;
-        requestFullscreen();
         launchMode = true;
         alertOverlay.style.display = 'flex';
         let count = 5;
         const intr = setInterval(() => {
-            if(!launchMode) { clearInterval(intr); return; }
             playBeep(1000, 'square', 0.2, 0.1);
             alertOverlay.innerHTML = `MISSION OVERLOAD<br>AUTO-REBOOT IN ${count}`;
             count--;
@@ -343,26 +346,31 @@
                 updateMissionData();
                 setTimeout(() => { 
                     alertOverlay.style.display='none'; 
-                    launchMode=false; 
+                    launchMode = false; 
                     addTerminalLine(">> SYSTEM RECOVERED. STANDBY.");
                 }, 2000);
             }
         }, 1000);
     }
 
-    document.addEventListener('keydown', (e) => {
-        if(e.repeat) return;
-        if(e.key.toLowerCase() === 'l') triggerLaunch();
-        else if(e.key === 'Backspace') {
-            document.body.style.animation = "shake 0.2s infinite";
-            playBeep(50, 'sawtooth', 0.4, 0.2);
-            setTimeout(() => document.body.style.animation = "none", 200);
-        } else performAction();
-    });
+    // MANDATORY GLOBAL INTERACTION TO START ENGINE
+    document.addEventListener('touchstart', (e) => {
+        requestFullscreen(); 
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        
+        if(e.target.closest('.modal-btn') || e.target.closest('.header span') || e.target.closest('#log-modal')) return;
+        
+        if(e.target.closest('#scanner-btn')) {
+            triggerLaunch();
+        } else {
+            performAction();
+        }
+    }, {passive: false});
 
-    const interactionEvent = ('ontouchstart' in window) ? 'touchstart' : 'mousedown';
-    document.addEventListener(interactionEvent, (e) => {
-        // Only trigger action if we didn't hit a specific UI button
+    document.addEventListener('mousedown', (e) => {
+        requestFullscreen();
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        
         if(e.target.closest('.modal-btn') || e.target.closest('.header span') || e.target.closest('#log-modal')) return;
         
         if(e.target.closest('#scanner-btn')) {
@@ -372,6 +380,18 @@
         }
     });
 
+    document.addEventListener('keydown', (e) => {
+        requestFullscreen();
+        if(e.repeat) return;
+        if(e.key.toLowerCase() === 'l') triggerLaunch();
+        else if(e.key === 'Backspace') {
+            appBody.style.animation = "shake 0.2s infinite";
+            playBeep(50, 'sawtooth', 0.4, 0.2);
+            setTimeout(() => appBody.style.animation = "none", 200);
+        } else performAction();
+    });
+
+    // AUTO-UPDATES
     setInterval(() => {
         document.getElementById('clock').textContent = new Date().toLocaleTimeString();
         document.getElementById('cpu-bar').style.width = Math.random()*100 + "%";
